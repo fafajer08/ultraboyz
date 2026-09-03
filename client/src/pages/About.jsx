@@ -1,0 +1,35 @@
+import React from 'react';
+import { Box, Heading, Text, SimpleGrid, VStack, UnorderedList, ListItem, useColorModeValue } from '@chakra-ui/react';
+
+export default function About() {
+  const cardBg = useColorModeValue('white', '#182019');
+  const borderCol = useColorModeValue('rgba(18,24,15,0.12)', 'rgba(234,243,233,0.12)');
+
+  return (
+    <Box maxW="1080px" mx="auto" px={4} py={{ base: 8, md: 12 }}>
+      <Heading fontSize={{ base: '32px', md: '40px' }} mb={6}>About the crew</Heading>
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={10}>
+        <VStack align="start" spacing={4}>
+          <Text color="gray.500" lineHeight={1.7} fontSize="sm">
+            Ultraboyz isn't built around pace. We're built around distance — the idea that if you can hold your form for 30, 40, 50 kilometers, speed isn't something you chase, it's something that shows up on its own.
+          </Text>
+          <Text color="gray.500" lineHeight={1.7} fontSize="sm">
+            Most run clubs measure Tuesdays in minutes per kilometer. We measure ours in how far the legs held out. That's the whole philosophy: put in the distance, and the fast will find you eventually. It usually does.
+          </Text>
+          <Text color="gray.500" lineHeight={1.7} fontSize="sm">
+            That doesn't mean we're slow — ask anyone who's tried to keep up with us in the last 5K of a 50. We're just not in a hurry to get there.
+          </Text>
+        </VStack>
+        <Box bg={cardBg} border="1px solid" borderColor={borderCol} borderRadius="14px" p={6} h="fit-content">
+          <Heading fontSize="22px" color="brand.cyan" mb={3}>How we train</Heading>
+          <UnorderedList spacing={2} fontSize="sm" color="gray.500">
+            <ListItem>Keep showing up. The distance will build you, and the speed will follow.</ListItem>
+            <ListItem>We build the legs, strengthen the mind, and earn every kilometer. Speed isn’t the goal at the beginning—it’s what eventually comes from the work.</ListItem>
+            <ListItem>No shortcuts. No rushing the pace.</ListItem>
+            <ListItem>Stack the miles. Trust the process. Let the speed find you.</ListItem>
+          </UnorderedList>
+        </Box>
+      </SimpleGrid>
+    </Box>
+  );
+}
