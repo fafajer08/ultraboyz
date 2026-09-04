@@ -1,10 +1,32 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Box, Heading, Text, HStack, VStack, Button, SimpleGrid, useColorModeValue } from '@chakra-ui/react';
+import { apiFetch } from '../context/AuthContext.jsx';
+import { mockMembers } from '../data/mockMembers.js';
+import { mockEvents } from '../data/mockEvents.js';
 
 export default function Home() {
   const cardBg = useColorModeValue('white', '#182019');
   const borderCol = useColorModeValue('rgba(18,24,15,0.12)', 'rgba(234,243,233,0.12)');
+  const [members, setMembers] = useState(null);
+  const [events, setEvents] = useState(null);
+
+  useEffect(() => {
+    apiFetch('/api/members').then(setMembers).catch(() => setMembers(mockMembers));
+    apiFetch('/api/events').then(setEvents).catch(() => setEvents(mockEvents));
+  }, []);
+
+  const memberCount = members?.length ?? '—';
+  const eventCount = events?.length ?? '—';
+  const longestRun = members?.length
+    ? `${Math.round(Math.max(...members.map(m => Number(m.longest_run_km) || 0)))}K+`
+    : '—';
+
+  const stats = [
+    [memberCount, 'active members'],
+    [longestRun, 'longest standing run'],
+    [eventCount, 'races this season'],
+  ];
 
   return (
     <Box maxW="1080px" mx="auto" px={4} py={{ base: 8, md: 16 }}>
@@ -23,7 +45,7 @@ export default function Home() {
         <Button as={Link} to="/crew" variant="outline" size="lg">Meet the crew</Button>
       </HStack>
       <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4} mt={12}>
-        {[['8', 'active members'], ['42K+', 'longest standing runs'], ['4', 'races this season']].map(([num, lbl]) => (
+        {stats.map(([num, lbl]) => (
           <VStack key={lbl} align="start" bg={cardBg} border="1px solid" borderColor={borderCol} borderRadius="14px" p={5}>
             <Text fontFamily="heading" fontSize="4xl" color="brand.cyan">{num}</Text>
             <Text fontSize="xs" color="gray.500">{lbl}</Text>
