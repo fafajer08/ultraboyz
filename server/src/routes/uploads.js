@@ -1,23 +1,23 @@
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
-import crypto from 'crypto';
+import { v2 as cloudinary } from 'cloudinary';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(process.cwd(), 'uploads')),
-  filename: (req, file, cb) => {
-    const unique = crypto.randomBytes(8).toString('hex');
-    cb(null, `${Date.now()}-${unique}${path.extname(file.originalname).toLowerCase()}`);
-  },
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
+// Files are held in memory just long enough to stream to Cloudinary, never
+// written to Render's (or any host's) local disk — that disk isn't
+// permanent, so anything saved there disappears on the next restart/redeploy.
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_TYPES.includes(file.mimetype)) {
@@ -27,18 +27,35 @@ const upload = multer({
   },
 });
 
-// POST /api/uploads - any logged-in user can upload a photo (for their own
-// profile, or an event they're allowed to add photos to). Returns a URL
-// that can be dropped straight into photo_url / cover_photo_url fields.
+function uploadBufferToCloudinary(buffer) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: 'ultraboyz', resource_type: 'image' },
+      (err, result) => (err ? reject(err) : resolve(result))
+    );
+    stream.end(buffer);
+  });
+}
+
+// POST /api/uploads - any logged-in user can upload a photo. Returns a
+// permanent Cloudinary URL that can be dropped straight into photo_url /
+// cover_photo_url fields.
 router.post('/', requireAuth, (req, res) => {
-  upload.single('photo')(req, res, (err) => {
+  upload.single('photo')(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: 'No file was uploaded.' });
-    // Absolute URL, not relative — the frontend may be on a different origin
-    // than the API in production, so a bare "/uploads/xxx.jpg" would try to
-    // load from the frontend's own domain and 404.
-    const url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-    res.status(201).json({ url });
+
+    if (!process.env.CLOUDINARY_CLOUD_NAME) {
+      return res.status(500).json({ error: 'Photo storage isn\u2019t configured on the server yet (missing Cloudinary env vars).' });
+    }
+
+    try {
+      const result = await uploadBufferToCloudinary(req.file.buffer);
+      res.status(201).json({ url: result.secure_url });
+    } catch (uploadErr) {
+      console.error(uploadErr);
+      res.status(500).json({ error: 'Could not upload that photo.' });
+    }
   });
 });
 
