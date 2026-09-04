@@ -124,34 +124,89 @@ need the real API, since they're not meaningful with fake data.
 
 ## Deploying it
 
-This is a two-piece app (a Postgres-backed API + a static React build), so you're
-deploying three things: a database, the backend, and the frontend. A few solid,
-current combinations:
+This walkthrough uses a specific, free-to-start combination: **Neon** (database) +
+**Render** (API) + **Vercel** (frontend). Any equivalent host works the same way —
+the steps below just make it concrete instead of abstract.
 
-**Simplest — frontend + backend + DB, mostly free**
-- **Database:** [Neon](https://neon.tech) or [Supabase](https://supabase.com) — both give you a
-  permanent free Postgres instance (no 30/90-day expiry), just paste the connection
-  string into `server/.env`.
-- **Backend:** [Render](https://render.com) — deploy `server/` as a Web Service (Node).
-  Free tier exists but spins down after inactivity and takes ~30–60s to wake back up;
-  the $7/mo Starter tier removes that if it matters for a demo.
-- **Frontend:** [Vercel](https://vercel.com) or [Netlify](https://netlify.com) — deploy `client/` as a
-  static/Vite site, both free for hobby projects. Set an environment variable or
-  `vite.config.js` proxy override pointing at your Render backend URL instead of
-  `localhost:4000`.
+### 1. Push your code to GitHub
 
-**All-in-one alternative**
-- **[Railway](https://railway.app)** — can host the Node backend, a Postgres database, and
-  (with a static-site buildpack) the frontend all in one project. No permanent free
-  tier anymore (moved to a one-time trial credit), but the visual project graph makes
-  wiring a PERN app together fast, and small hobby usage is inexpensive.
+Both `server/` and `client/` need to live in a git repo that Render/Vercel can pull
+from (they don't accept zip uploads for auto-deploys). Create a repo, commit
+everything **except** `node_modules/`, `.env`, and `server/uploads/*` (already
+covered by `server/.gitignore` — add a matching one for `client/` if you don't
+already have one: `node_modules/`, `.env`, `dist/`).
 
-**Before deploying**
-1. Set a strong, random `JWT_SECRET` in production — never reuse the example one.
-2. Update `client/vite.config.js`'s proxy (dev-only) — in production, either serve the
-   API from the same domain/subdomain as the frontend, or set `VITE_API_URL` and update
-   `apiFetch` in `AuthContext.jsx` to prefix it, since Vite's dev proxy doesn't apply
-   to a production build.
-3. Run `schema.sql` + `seed-events.sql` + `seed-users.js` against your **production**
-   database, not just your local one.
-4. Immediately log in as the seeded admin and change the default password.
+### 2. Database — Neon
+
+1. Sign up at [neon.tech](https://neon.tech), create a project.
+2. Copy the connection string it gives you (starts with `postgresql://...`).
+3. Run your schema and seed data against it. Easiest way: paste each file's
+   contents into Neon's built-in SQL Editor (in their dashboard) and run them
+   in order — `schema.sql`, then `seed-events.sql`. Or from your terminal:
+   ```bash
+   psql "postgresql://<your-neon-connection-string>" -f server/db/schema.sql
+   psql "postgresql://<your-neon-connection-string>" -f server/db/seed-events.sql
+   ```
+4. `seed-users.js` is a Node script, not SQL, so it needs to run with
+   `DATABASE_URL` pointed at Neon. Simplest way: temporarily set
+   `DATABASE_URL=<your-neon-string>` in your **local** `server/.env`, run
+   `npm run seed:users` once from your machine, then switch `.env` back to
+   your local database. (This only has to happen once, ever, per environment.)
+
+### 3. Backend — Render
+
+1. Sign up at [render.com](https://render.com), **New → Web Service**, connect your
+   GitHub repo, set **Root Directory** to `server`.
+2. Build command: `npm install`. Start command: `npm start`.
+3. Under Environment, add these variables:
+   - `DATABASE_URL` — your Neon connection string
+   - `JWT_SECRET` — generate one with:
+     ```bash
+     node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+     ```
+     Paste the output in. Never reuse the example value from `.env.example`.
+   - `CORS_ORIGIN` — leave blank for now, you'll fill this in after step 4
+   - `PORT` — Render sets this automatically, you don't need to add it
+4. Deploy. Once it's live, copy the Render URL (e.g. `https://ultraboyz-api.onrender.com`).
+
+### 4. Frontend — Vercel
+
+1. Sign up at [vercel.com](https://vercel.com), **Add New → Project**, connect the
+   same repo, set **Root Directory** to `client`.
+2. Framework preset: Vite. Build command `npm run build`, output directory `dist`
+   (Vercel usually detects these automatically).
+3. Add an environment variable: `VITE_API_URL` = your Render URL from step 3
+   (e.g. `https://ultraboyz-api.onrender.com`, no trailing slash).
+4. Deploy. Copy the Vercel URL it gives you (e.g. `https://ultraboyz.vercel.app`).
+
+### 5. Close the loop
+
+Go back to Render → your service → Environment → set `CORS_ORIGIN` to your Vercel
+URL from step 4 → save (Render redeploys automatically). This locks the API down
+so only your actual site can call it.
+
+### 6. Log in and lock down the admin account
+
+1. Open your Vercel URL.
+2. Log in with the seeded admin: `admin@ultraboyz.club` / `Ultraboyz2026!`.
+3. Go to **Dashboard → Members**, find your own admin row, click **Edit**, fill
+   in **Reset password** with something only you know, **Save changes**.
+4. Do the same for any crew members still on the shared `Welcome123!` password
+   — or just tell them to log in and change it themselves from their own
+   dashboard.
+
+That's it — send your co-runners the Vercel link.
+
+### If something's not loading after deploy
+
+- **Blank page / API errors in the browser console:** almost always `VITE_API_URL`
+  is missing or wrong on Vercel, or `CORS_ORIGIN` on Render doesn't exactly match
+  your Vercel URL (no trailing slash, correct `https://`).
+- **"relation does not exist" errors:** the production database is missing
+  `schema.sql` — go back to step 2.
+- **Can't log in at all:** `seed-users.js` was never run against the production
+  database — also step 2.
+- **Uploaded photos don't show up after a while:** Render's free tier filesystem
+  isn't permanent across redeploys. Fine for a demo; for something you'll keep
+  using, swap `server/src/routes/uploads.js` to upload to Cloudinary or S3
+  instead of local disk.

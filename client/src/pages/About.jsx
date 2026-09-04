@@ -23,10 +23,10 @@ export default function About() {
         <Box bg={cardBg} border="1px solid" borderColor={borderCol} borderRadius="14px" p={6} h="fit-content">
           <Heading fontSize="22px" color="brand.cyan" mb={3}>How we train</Heading>
           <UnorderedList spacing={2} fontSize="sm" color="gray.500">
-            <ListItem>Keep showing up. The distance will build you, and the speed will follow.</ListItem>
-            <ListItem>We build the legs, strengthen the mind, and earn every kilometer. Speed isn’t the goal at the beginning—it’s what eventually comes from the work.</ListItem>
-            <ListItem>No shortcuts. No rushing the pace.</ListItem>
-            <ListItem>Stack the miles. Trust the process. Let the speed find you.</ListItem>
+            <ListItem>Long run every Saturday, distance posted Thursday night</ListItem>
+            <ListItem>Everyone crews for everyone — no one finishes an aid station alone</ListItem>
+            <ListItem>Race reports are mandatory, humility is optional</ListItem>
+            <ListItem>Photos go up after every race, good angles not guaranteed</ListItem>
           </UnorderedList>
         </Box>
       </SimpleGrid>

@@ -34,7 +34,11 @@ router.post('/', requireAuth, (req, res) => {
   upload.single('photo')(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: 'No file was uploaded.' });
-    res.status(201).json({ url: `/uploads/${req.file.filename}` });
+    // Absolute URL, not relative — the frontend may be on a different origin
+    // than the API in production, so a bare "/uploads/xxx.jpg" would try to
+    // load from the frontend's own domain and 404.
+    const url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    res.status(201).json({ url });
   });
 });
 

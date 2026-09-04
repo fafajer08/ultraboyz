@@ -4,6 +4,7 @@
   "description": "Express + Postgres API for the Ultraboyz run crew — auth, roles, members, events",
   "main": "src/index.js",
   "type": "module",
+  "engines": { "node": ">=18" },
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",

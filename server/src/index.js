@@ -11,7 +11,16 @@ import uploadsRouter from './routes/uploads.js';
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// Needed behind a reverse proxy (Render, Railway, etc.) so req.protocol
+// correctly reports "https" instead of "http" — otherwise uploaded photo
+// URLs would be built with the wrong scheme.
+app.set('trust proxy', 1);
+
+// In dev this is wide open (undefined -> reflects any origin). In production,
+// set CORS_ORIGIN to your deployed frontend's exact URL so only your own
+// site can call this API with credentials.
+app.use(cors({ origin: process.env.CORS_ORIGIN || true, credentials: true }));
 app.use(express.json());
 app.use(attachUser); // populates req.user when a valid token is sent, for every route
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'))); // serves uploaded photos
