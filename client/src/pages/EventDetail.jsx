@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-  Box, Heading, Text, SimpleGrid, Image, VStack, HStack, Button, Input,
+  Box, Heading, Text, SimpleGrid, Image, HStack, Button, Input,
   FormControl, FormLabel, Alert, AlertIcon, useColorModeValue,
+  Modal, ModalOverlay, ModalContent, ModalCloseButton, ModalBody, useDisclosure, IconButton,
 } from '@chakra-ui/react';
+import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import { mockEvents } from '../data/mockEvents.js';
 import { apiFetch, useAuth } from '../context/AuthContext.jsx';
-import { parseEventDate } from '../utils/dates.js';
+import { formatEventDate } from '../utils/dates.js';
 import PhotoUploadField from '../components/PhotoUploadField.jsx';
 
 export default function EventDetail() {
@@ -18,6 +20,11 @@ export default function EventDetail() {
   const [error, setError] = useState('');
   const cardBg = useColorModeValue('white', '#182019');
   const borderCol = useColorModeValue('rgba(18,24,15,0.12)', 'rgba(234,243,233,0.12)');
+
+  // Full-size viewer: activeIndex points into event.photos, or 'cover' for
+  // the cover photo. null means closed.
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [activeIndex, setActiveIndex] = useState(null);
 
   function load() {
     apiFetch(`/api/events/${id}`)
@@ -46,19 +53,39 @@ export default function EventDetail() {
   if (event === null) return <Box maxW="1080px" mx="auto" px={4} py={12}><Text color="gray.500">Loading…</Text></Box>;
 
   const canAddPhoto = user && (user.role === 'admin' || event.status === 'recent');
+  const photos = event.photos || [];
+
+  function openViewer(index) {
+    setActiveIndex(index);
+    onOpen();
+  }
+  function showPrev(e) {
+    e.stopPropagation();
+    setActiveIndex(i => (i === 'cover' || i === 0 ? photos.length - 1 : i - 1));
+  }
+  function showNext(e) {
+    e.stopPropagation();
+    setActiveIndex(i => (i === 'cover' || i === photos.length - 1 ? 0 : i + 1));
+  }
+
+  const activePhoto = activeIndex === 'cover'
+    ? { photo_url: event.cover_photo_url, caption: event.title }
+    : (activeIndex !== null ? photos[activeIndex] : null);
+  const canNavigate = activeIndex !== 'cover' && photos.length > 1;
 
   return (
     <Box maxW="1080px" mx="auto" px={4} py={{ base: 8, md: 12 }}>
       <Link to="/events"><Text color="gray.500" mb={5} fontSize="sm">&larr; back to events</Text></Link>
       {event.cover_photo_url && (
         <Image
+          as="button" onClick={() => openViewer('cover')}
           src={event.cover_photo_url} alt={event.title}
-          w="100%" maxH="320px" objectFit="cover" borderRadius="14px" mb={5}
+          w="100%" maxH="320px" objectFit="cover" borderRadius="14px" mb={5} cursor="pointer"
         />
       )}
       <Heading fontSize={{ base: '32px', md: '40px' }} mb={2}>{event.title}</Heading>
       <Text fontSize="sm" color="gray.500" mb={2}>
-        {event.location} · {parseEventDate(event.event_date)?.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) || 'Date TBD'} · {event.distance}
+        {event.location} · {formatEventDate(event.event_date, event.end_date, { long: true })} · {event.distance}
       </Text>
       <Text fontSize="sm" color="gray.500" mb={7}>{event.notes}</Text>
       {fallback && (
@@ -69,14 +96,17 @@ export default function EventDetail() {
 
       <Heading fontSize="22px" color="gray.500" mb={3}>Photos</Heading>
       <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4} mb={8}>
-        {(event.photos || []).map(p => (
-          <Box key={p.id} bg={cardBg} border="1px solid" borderColor={borderCol} borderRadius="12px" overflow="hidden">
+        {photos.map((p, i) => (
+          <Box
+            key={p.id} as="button" onClick={() => openViewer(i)}
+            bg={cardBg} border="1px solid" borderColor={borderCol} borderRadius="12px" overflow="hidden" textAlign="left"
+          >
             <Image src={p.photo_url} alt={p.caption} h="160px" w="100%" objectFit="cover" />
             <Text fontSize="xs" color="gray.500" p={3}>{p.caption}</Text>
           </Box>
         ))}
       </SimpleGrid>
-      {(!event.photos || event.photos.length === 0) && <Text color="gray.500" mb={8}>No photos posted yet.</Text>}
+      {photos.length === 0 && <Text color="gray.500" mb={8}>No photos posted yet.</Text>}
 
       {canAddPhoto && (
         <Box bg={cardBg} border="1px dashed" borderColor={borderCol} borderRadius="14px" p={6}>
@@ -104,6 +134,30 @@ export default function EventDetail() {
           <AlertIcon /> Photos can only be added once this event moves to Recent.
         </Alert>
       )}
+
+      {/* Full-size photo viewer, works for both the cover photo and gallery photos */}
+      <Modal isOpen={isOpen} onClose={onClose} isCentered size="xl">
+        <ModalOverlay />
+        <ModalContent bg="transparent" boxShadow="none" mx={4}>
+          <ModalCloseButton color="white" bg="blackAlpha.600" borderRadius="full" zIndex={2} />
+          <ModalBody p={0} position="relative">
+            {activePhoto && (
+              <>
+                <Image src={activePhoto.photo_url} alt={activePhoto.caption} w="100%" maxH="80vh" objectFit="contain" borderRadius="10px" />
+                {activePhoto.caption && (
+                  <Text color="white" textAlign="center" fontSize="sm" mt={3}>{activePhoto.caption}</Text>
+                )}
+                {canNavigate && (
+                  <HStack justify="space-between" position="absolute" top="50%" left={0} right={0} transform="translateY(-50%)" px={2}>
+                    <IconButton aria-label="Previous photo" icon={<ChevronLeftIcon boxSize={6} />} onClick={showPrev} borderRadius="full" bg="blackAlpha.600" color="white" _hover={{ bg: 'blackAlpha.800' }} />
+                    <IconButton aria-label="Next photo" icon={<ChevronRightIcon boxSize={6} />} onClick={showNext} borderRadius="full" bg="blackAlpha.600" color="white" _hover={{ bg: 'blackAlpha.800' }} />
+                  </HStack>
+                )}
+              </>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 }
