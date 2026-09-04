@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Box, Flex, Text, Badge, useColorModeValue } from '@chakra-ui/react';
+import { Box, Flex, Text, Badge, Image, useColorModeValue } from '@chakra-ui/react';
 import { parseEventDate } from '../utils/dates.js';
 
 export default function EventCard({ event }) {
@@ -18,6 +18,12 @@ export default function EventCard({ event }) {
       p={{ base: 4, md: 5 }} mb={3} gap={4} wrap="wrap" transition="border-color 0.15s"
       _hover={isRecent ? { borderColor: 'brand.cyan' } : undefined}
     >
+      {event.cover_photo_url && (
+        <Image
+          src={event.cover_photo_url} alt={event.title}
+          boxSize={{ base: '64px', sm: '76px' }} objectFit="cover" borderRadius="10px" flexShrink={0}
+        />
+      )}
       <Text fontFamily="heading" fontSize="3xl" color="brand.magenta" lineHeight={1} minW="70px">
         {mon}<br />{day}
       </Text>

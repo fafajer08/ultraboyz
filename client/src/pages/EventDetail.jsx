@@ -50,6 +50,12 @@ export default function EventDetail() {
   return (
     <Box maxW="1080px" mx="auto" px={4} py={{ base: 8, md: 12 }}>
       <Link to="/events"><Text color="gray.500" mb={5} fontSize="sm">&larr; back to events</Text></Link>
+      {event.cover_photo_url && (
+        <Image
+          src={event.cover_photo_url} alt={event.title}
+          w="100%" maxH="320px" objectFit="cover" borderRadius="14px" mb={5}
+        />
+      )}
       <Heading fontSize={{ base: '32px', md: '40px' }} mb={2}>{event.title}</Heading>
       <Text fontSize="sm" color="gray.500" mb={2}>
         {event.location} · {parseEventDate(event.event_date)?.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) || 'Date TBD'} · {event.distance}
