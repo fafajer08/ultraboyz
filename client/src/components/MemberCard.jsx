@@ -17,7 +17,7 @@ export default function MemberCard({ member, onOpen }) {
     >
       <VStack spacing={2}>
         <Box position="relative">
-          <Avatar size="lg" src={member.photo_url} name={member.name} />
+          <Avatar size="lg" src={member.photo_url} name={member.name} sx={{ img: { objectPosition: 'top' } }} />
           {isLegendary ? (
             <Badge position="absolute" bottom="-6px" left="50%" transform="translateX(-50%)" fontSize="8px"
               bgGradient="linear(to-r, brand.cyan, brand.magenta)" color="#0E1410" borderRadius="full" px={2}>
